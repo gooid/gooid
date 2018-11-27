@@ -23,7 +23,7 @@ var bWallpaper = false
 
 func event(act *app.Activity, e *app.InputEvent) {
 	if mot := e.Motion(); mot != nil {
-		if mot.GetAction() == input.KEY_EVENT_ACTION_UP {
+		if mot.GetAction() == input.MOTION_EVENT_ACTION_UP {
 			log.Println("event:", mot)
 
 			bWallpaper = !bWallpaper
