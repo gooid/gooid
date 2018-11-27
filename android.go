@@ -2,7 +2,6 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-
 package app
 
 import (
@@ -21,4 +20,13 @@ func SetMainCB(fn func(*Context)) {
 
 func Loop() bool {
 	return app.Loop()
+}
+
+// getprop
+func PropGet(k string) string {
+	return app.PropGet(k)
+}
+
+func PropVisit(cb func(k, v string)) {
+	app.PropVisit(cb)
 }
