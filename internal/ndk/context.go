@@ -55,6 +55,7 @@ type Context struct {
 	funcChan    chan func()
 	wait        *sync.WaitGroup
 	isReady     bool
+	isDebug     bool
 
 	className  string
 	savedState []byte
@@ -76,6 +77,10 @@ func (ctx *Context) reset() {
 	ctx.isFocus = false
 	ctx.isResume = false
 	ctx.willDestory = false
+}
+
+func (ctx *Context) Debug(enable bool) {
+	ctx.isDebug = enable
 }
 
 func (ctx *Context) WillDestory() bool {
@@ -129,11 +134,13 @@ func (ctx *Context) Release() {
 }
 
 func (ctx *Context) runFunc(fun func(), sync bool) {
-	defer func() {
-		if r := recover(); r != nil {
-			info("sendFunc.recover:", r)
-		}
-	}()
+	if !ctx.isDebug {
+		defer func() {
+			if r := recover(); r != nil {
+				info("runFunc.recover:", r)
+			}
+		}()
+	}
 
 	//Info("...wait...")
 	//oldM := util.Mode(util.StackTrace)
@@ -155,11 +162,14 @@ func (ctx *Context) runFunc(fun func(), sync bool) {
 var entryDoFunc uintptr
 
 func (ctx *Context) doFunc() {
-	defer func() {
-		if r := recover(); r != nil {
-			info("execFunc.recover:", r)
-		}
-	}()
+	if !ctx.isDebug {
+		defer func() {
+			if r := recover(); r != nil {
+				info("execFunc.recover:", r)
+			}
+		}()
+	}
+
 	if entryDoFunc == 0 {
 		pc := make([]uintptr, 1)
 		n := runtime.Callers(1, pc)
