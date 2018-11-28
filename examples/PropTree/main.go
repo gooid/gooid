@@ -19,9 +19,9 @@ import (
 
 func main() {
 	context := app.Callbacks{
-		FocusChanged:  focus,
-		WindowCreated: create,
-		//WindowDraw:         draw,
+		FocusChanged:       focus,
+		WindowCreated:      create,
+		WindowDraw:         draw,
 		WindowRedrawNeeded: redraw,
 		WindowDestroyed:    destroyed,
 		Event:              event,
@@ -75,7 +75,7 @@ func focus(_ *app.Activity, f bool) {
 	isFocus = f
 }
 
-const WINDOWSCALE = 2
+const WINDOWSCALE = 1
 const title = "显示所有属性"
 
 var (
@@ -132,7 +132,7 @@ func initEGL(win *app.Window) {
 			// 加载所有中文Glyph，但内存开销太大
 			//fonts.AddFontFromFileTTF(fontName, 14.0, imgui.SwigcptrFontConfig(0), fonts.GetGlyphRangesChineseSimplifiedCommon())
 			// 仅仅加载需要显示的中文Glyph
-			fonts.AddFontFromFileTTF(fontName, 16.0, imgui.SwigcptrFontConfig(0), util.GetFontGlyphRanges(title))
+			fonts.AddFontFromFileTTF(fontName, 24.0, imgui.SwigcptrFontConfig(0), util.GetFontGlyphRanges(title))
 		}
 	}
 
@@ -147,7 +147,11 @@ func initEGL(win *app.Window) {
 			desity, _ := strconv.Atoi(dstr)
 
 			if desity > 160 {
-				io.SetFontGlobalScale((float32)(desity / 160))
+				iScale := (float32)(desity / 160 / WINDOWSCALE)
+				io.SetFontGlobalScale(iScale)
+				style := imgui.GetStyle()
+				style.ScaleAllSizes(iScale)
+
 				scale := imgui.NewVec2((float32)(WINDOWSCALE), (float32)(WINDOWSCALE))
 				defer scale.Delete()
 				io.SetDisplayFramebufferScale(scale)
@@ -186,8 +190,10 @@ func create(act *app.Activity, win *app.Window) {
 }
 
 func redraw(act *app.Activity, win *app.Window) {
-	releaseEGL()
-	initEGL(win)
+	act.Context().Call(func() {
+		releaseEGL()
+		initEGL(win)
+	}, false)
 	act.Context().Call(func() {
 		draw(act, nil)
 	}, false)
@@ -214,14 +220,14 @@ func draw(act *app.Activity, win *app.Window) {
 		io.SetDeltaTime(float32(now.Sub(deltaLast).Seconds()))
 		deltaLast = now
 
-		const S = float32(10)
+		// Margin
+		MARGIN := float32(width / 20)
+
 		imgui.NewFrame()
-		curpos := imgui.NewVec2(S, S)
+		curpos := imgui.NewVec2(MARGIN, MARGIN)
 		defer curpos.Delete()
 		imgui.SetNextWindowPos(curpos)
-		isize := imgui.NewVec2(float32(width)-2*S, float32(height)-2*S)
-		//isize := imgui.NewVec2(float32(win.Width()/SCALE_BUFFER)-2*S, float32(win.Height()/SCALE_BUFFER)-2*S)
-		//isize := imgui.NewVec2(float32(300*2)-2*S, float32(450*2)-2*S)
+		isize := imgui.NewVec2(float32(width)-2*MARGIN, float32(height)-2*MARGIN)
 		defer isize.Delete()
 		imgui.SetNextWindowSize(isize)
 
