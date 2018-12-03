@@ -241,7 +241,7 @@ func (ctx *Context) loopEvents(timeoutMillis int) bool {
 			if ctx.willDestory {
 				return false
 			}
-			//return true
+			return true
 
 		case looper_ID_SENSOR:
 			//Info("LooperPollAll is SENSOR")
@@ -264,7 +264,7 @@ func (ctx *Context) loopEvents(timeoutMillis int) bool {
 			} else {
 				info("looper_ID_SENSOR ...")
 			}
-			//return true
+			return true
 
 		case LOOPER_POLL_WAKE:
 			info("LooperPollAll is ALOOPER_POLL_WAKE")
@@ -311,12 +311,12 @@ func (ctx *Context) Loop() {
 	}
 }
 
-func (ctx *Context) PollEvent() {
-	ctx.pollEvent(0)
+func (ctx *Context) PollEvent() bool {
+	return ctx.pollEvent(0)
 }
 
-func (ctx *Context) WaitEvent() {
-	ctx.pollEvent(-1)
+func (ctx *Context) WaitEvent() bool {
+	return ctx.pollEvent(-1)
 }
 
 func (ctx *Context) Wake() {
