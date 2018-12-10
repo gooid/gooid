@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	"image/draw"
+	imagedraw "image/draw"
 	_ "image/png"
 	"io"
 	"log"
@@ -27,10 +27,11 @@ import (
 
 func main() {
 	context := app.Callbacks{
-		//WindowDraw:         draw_,
+		WindowDraw:         draw,
 		WindowRedrawNeeded: redraw,
 		WindowDestroyed:    destroyed,
 		Event:              event,
+		Create:             create,
 	}
 	app.SetMainCB(func(ctx *app.Context) {
 		ctx.Debug(true)
@@ -62,12 +63,12 @@ func event(act *app.Activity, e *app.InputEvent) {
 			//log.Println("event:", mot)
 			return
 		}
-		draw_(act, nil)
+		draw(act, nil)
 
 		switch mot.GetAction() {
 		case input.MOTION_EVENT_ACTION_UP:
 			lastX, lastY = 0, 0
-			draw_(act, nil)
+			draw(act, nil)
 		}
 	}
 }
@@ -79,7 +80,6 @@ var (
 	width, height int
 	eglctx        *egl.EGLContext
 
-	deltaLast  = time.Now()
 	im         *util.Render
 	imagData   image.Image
 	imageTxtId uint32
@@ -87,29 +87,57 @@ var (
 )
 
 func initEGL(act *app.Activity, win *app.Window) {
-	eglctx = egl.CreateEGLContext(&nativeInfo{win: win})
-	if eglctx == nil {
-		return
-	}
 	width, height = win.Width(), win.Height()
 	log.Println("WINSIZE:", width, height)
 	width = int(float32(width) / WINDOWSCALE)
 	height = int(float32(height) / WINDOWSCALE)
 
-	if im == nil {
-		// gl init
-		gl.Init()
-		log.Println("RENDERER:", gl.GoStr(gl.GetString(gl.RENDERER)))
-		log.Println("VENDOR:", gl.GoStr(gl.GetString(gl.VENDOR)))
-		log.Println("VERSION:", gl.GoStr(gl.GetString(gl.VERSION)))
-		log.Println("EXTENSIONS:", gl.GoStr(gl.GetString(gl.EXTENSIONS)))
-
-		log.Printf("%s %s", gl.GoStr(gl.GetString(gl.RENDERER)), gl.GoStr(gl.GetString(gl.VERSION)))
-
-		im = util.NewRender("#version 100")
-
-		imagData = ReadImage(act, "label_icon.png")
+	eglctx = egl.CreateEGLContext(&nativeInfo{win: win})
+	if eglctx == nil {
+		return
 	}
+
+	log.Println("RENDERER:", gl.GoStr(gl.GetString(gl.RENDERER)))
+	log.Println("VENDOR:", gl.GoStr(gl.GetString(gl.VENDOR)))
+	log.Println("VERSION:", gl.GoStr(gl.GetString(gl.VERSION)))
+	log.Println("EXTENSIONS:", gl.GoStr(gl.GetString(gl.EXTENSIONS)))
+
+	log.Printf("%s %s", gl.GoStr(gl.GetString(gl.RENDERER)), gl.GoStr(gl.GetString(gl.VERSION)))
+
+	// 设置完字体再调用
+	im.CreateDeviceObjects()
+
+	if rgba, ok := imagData.(*image.RGBA); ok {
+		imageTxtId = genTexture(gl.Ptr(rgba.Pix), rgba.Bounds().Dx(), rgba.Bounds().Dy())
+	}
+
+	io := imgui.GetIO()
+
+	dsize := imgui.NewVec2(float32(width), float32(height))
+	defer dsize.Delete()
+	io.SetDisplaySize(dsize)
+
+	// Setup time step
+	io.SetDeltaTime(float32(time.Now().UnixNano() / int64(time.Millisecond/time.Nanosecond)))
+}
+
+func releaseEGL() {
+	if im != nil {
+		im.DestroyDeviceObjects()
+	}
+	if imageTxtId != 0 {
+		gl.DeleteTextures(1, &imageTxtId)
+	}
+	if eglctx != nil {
+		eglctx.Terminate()
+		eglctx = nil
+	}
+}
+
+func create(act *app.Activity, _ []byte) {
+	// gl init
+	gl.Init()
+
 	// Setup Dear ImGui binding
 	imgui.CreateContext()
 
@@ -163,35 +191,13 @@ func initEGL(act *app.Activity, win *app.Window) {
 			}
 		}
 	}
+	io.SetConfigFlags(io.GetConfigFlags() | int(imgui.ConfigFlags_IsTouchScreen))
 
-	// 设置完字体再调用
-	im.CreateDeviceObjects()
+	// render 只需初始化一次
+	im = util.NewRender("#version 100")
 
-	if rgba, ok := imagData.(*image.RGBA); ok {
-		imageTxtId = genTexture(gl.Ptr(rgba.Pix), rgba.Bounds().Dx(), rgba.Bounds().Dy())
-	}
-
-	dsize := imgui.NewVec2(float32(width), float32(height))
-	//dsize := imgui.NewVec2(float32(win.Width()/SCALE_BUFFER), float32(win.Height()/SCALE_BUFFER))
-	defer dsize.Delete()
-	io.SetDisplaySize(dsize)
-
-	// Setup time step
-	deltaLast = time.Now()
-	io.SetDeltaTime(0)
-}
-
-func releaseEGL() {
-	if im != nil {
-		im.DestroyDeviceObjects()
-	}
-	if imageTxtId != 0 {
-		gl.DeleteTextures(1, &imageTxtId)
-	}
-	if eglctx != nil {
-		eglctx.Terminate()
-		eglctx = nil
-	}
+	// read asset resource
+	imagData = ReadImage(act, "label_icon.png")
 }
 
 func redraw(act *app.Activity, win *app.Window) {
@@ -200,10 +206,10 @@ func redraw(act *app.Activity, win *app.Window) {
 		initEGL(act, win)
 	}, false)
 	act.Context().Call(func() {
-		draw_(act, nil)
+		draw(act, nil)
 	}, false)
 	act.Context().Call(func() {
-		draw_(act, nil)
+		draw(act, nil)
 	}, false)
 }
 
@@ -211,7 +217,7 @@ func destroyed(act *app.Activity, win *app.Window) {
 	releaseEGL()
 }
 
-func draw_(act *app.Activity, win *app.Window) {
+func draw(act *app.Activity, win *app.Window) {
 	if eglctx != nil {
 		io := imgui.GetIO()
 
@@ -221,9 +227,7 @@ func draw_(act *app.Activity, win *app.Window) {
 		io.SetMouseDown([]bool{mouseLeft, false, mouseRight, false, false})
 
 		// Setup time step
-		now := time.Now()
-		io.SetDeltaTime(float32(now.Sub(deltaLast).Seconds()))
-		deltaLast = now
+		io.SetDeltaTime(float32(time.Now().UnixNano() / int64(time.Millisecond/time.Nanosecond)))
 
 		// Margin
 		MARGIN := float32(width / 20)
@@ -245,15 +249,17 @@ func draw_(act *app.Activity, win *app.Window) {
 		if imgui.CollapsingHeader("image", int(imgui.TreeNodeFlags_DefaultOpen)) {
 			imgui.SliderFloat("scale", &imageScale, float32(1), float32(20))
 			if imageTxtId != 0 {
-				imgsize := imgui.NewVec2(float32(imagData.Bounds().Dx())*imageScale, float32(imagData.Bounds().Dy())*imageScale)
+				imgsize := imgui.NewVec2(float32(imagData.Bounds().Dx()+1)*imageScale, float32(imagData.Bounds().Dy()+1)*imageScale)
 				defer imgsize.Delete()
 				imgui.Image(uintptr(imageTxtId), imgsize)
 			}
 		}
 
 		if imgui.CollapsingHeader("fiile list", int(imgui.TreeNodeFlags_DefaultOpen)) {
+			// 根目录，不是用"/"表示，用""
 			AssetInfo(act, "")
 			if imgui.TreeNode("a") {
+				// 子目录 "a"
 				AssetInfo(act, "a")
 				imgui.TreePop()
 				imgui.Separator()
@@ -282,6 +288,7 @@ func AssetInfo(act *app.Activity, dir string) {
 	assetDir := assetMgr.OpenDir(dir)
 	defer assetDir.Close()
 	for {
+		// 得到下一个文件名，但不能列出子目录
 		fname := assetDir.GetNextFileName()
 		if fname == "" {
 			return
@@ -340,10 +347,9 @@ func ReadImage(act *app.Activity, fname string) image.Image {
 	}
 	fa.Close()
 
+	// 转换成 RGBA 格式
 	dst := image.NewRGBA(img.Bounds())
-	draw.Draw(dst, dst.Bounds(), img, image.Point{}, draw.Src)
-	log.Printf("   %T %T", img, dst)
-
+	imagedraw.Draw(dst, dst.Bounds(), img, image.Point{}, imagedraw.Src)
 	return dst
 }
 
