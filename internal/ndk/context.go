@@ -43,10 +43,11 @@ type Context struct {
 	Callbacks
 
 	act    *Activity
-	window *Window
+	window *Window // 在 onStart 后不一定调用 onNativeWindowCreated
 	input  *InputQueue
 
-	isResume, isFocus,
+	isResume,
+	isFocus, // 在 onStart/onStop 之后不一定会调用 onWindowFocusChanged
 	willDestory bool
 
 	looper      *Looper
@@ -73,8 +74,6 @@ func (ctx *Context) setCB(cb *Callbacks) {
 }
 
 func (ctx *Context) reset() {
-	ctx.window = nil
-	ctx.isFocus = false
 	ctx.isResume = false
 	ctx.willDestory = false
 }

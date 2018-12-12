@@ -117,9 +117,9 @@ func onDestroy(act *Activity) {
 func onWindowFocusChanged(act *Activity, hasFocus C.int) {
 	ctx := act.Context()
 	info("onWindowFocusChanged:", act, hasFocus)
+	focus := hasFocus != 0
+	ctx.isFocus = focus
 	ctx.runFunc(func() {
-		focus := hasFocus != 0
-		ctx.isFocus = focus
 		if ctx.FocusChanged != nil {
 			ctx.FocusChanged(ctx.act, focus)
 		}
@@ -174,6 +174,11 @@ func onNativeWindowResized(act *Activity, window *Window) {
 func onNativeWindowRedrawNeeded(act *Activity, window *Window) {
 	ctx := act.Context()
 	info("onNativeWindowRedrawNeeded:", act, window)
+	assert(ctx.window == window)
+	if ctx.window != window {
+		ctx.window = window
+	}
+
 	if ctx.WindowRedrawNeeded != nil {
 		ctx.runFunc(func() {
 			ctx.WindowRedrawNeeded(act, window)
