@@ -29,6 +29,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"time"
 	"unsafe"
 )
@@ -520,6 +521,9 @@ func (queue *SensorEventQueue) disableSensor(sensor *Sensor) int {
 //int ASensorEventQueue_setEventRate(ASensorEventQueue* queue, ASensor const* sensor, int32_t usec);
 func (queue *SensorEventQueue) setEventRate(sensor *Sensor, t time.Duration) int {
 	usec := t / time.Microsecond
+	if usec >= math.MaxInt32 {
+		usec = math.MaxInt32
+	}
 	return int(C.ASensorEventQueue_setEventRate(queue.cptr(), sensor.cptr(), C.int32_t(usec)))
 }
 
@@ -699,8 +703,8 @@ func (event *SensorEvent) GetType() SENSOR_TYPE {
 	return SENSOR_TYPE(event._type)
 }
 
-func (event *SensorEvent) GetTimestamp() int64 {
-	return int64(event.timestamp)
+func (event *SensorEvent) GetTimestamp() time.Duration {
+	return time.Duration(event.timestamp) * time.Nanosecond
 }
 
 func (event *SensorEvent) getDatas() []byte {

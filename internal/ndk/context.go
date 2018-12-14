@@ -326,18 +326,19 @@ func (ctx *Context) Name() string {
 	return ctx.className
 }
 
-func (ctx *Context) EnableSensor(sensor *Sensor) {
+func (s *Sensor) Enable(act *Activity) {
+	ctx := act.Context()
 	if ctx.sensorQueue == nil {
 		ctx.sensorQueue = SensorManagerInstance().createEventQueue(ctx.looper,
 			looper_ID_SENSOR, nil, unsafe.Pointer(uintptr(looper_ID_SENSOR)))
 	}
-	ctx.sensorQueue.enableSensor(sensor)
+	ctx.sensorQueue.enableSensor(s)
 }
 
-func (ctx *Context) DisableSensor(sensor *Sensor) {
-	ctx.sensorQueue.disableSensor(sensor)
+func (s *Sensor) Disable(act *Activity) {
+	act.Context().sensorQueue.disableSensor(s)
 }
 
-func (ctx *Context) SetSensorRate(sensor *Sensor, t time.Duration) {
-	ctx.sensorQueue.setEventRate(sensor, t)
+func (s *Sensor) SetEventRate(act *Activity, t time.Duration) {
+	act.Context().sensorQueue.setEventRate(s, t)
 }
