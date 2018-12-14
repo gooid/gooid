@@ -41,17 +41,24 @@ func SensorInfo(act *app.Activity) []sensorInfo {
 
 var enableSensors = map[*sensor.Sensor]bool{}
 
-func EnableSensor(act *app.Activity, s *sensor.Sensor) {
+func EnableSensor(act *app.Activity, s *sensor.Sensor, t time.Duration) {
 	if b, _ := enableSensors[s]; !b {
-		act.Context().EnableSensor(s)
+		s.Enable(act)
+		s.SetEventRate(act, t)
 		enableSensors[s] = true
 	}
 }
 
 func DisableSensor(act *app.Activity, s *sensor.Sensor) {
 	if b, _ := enableSensors[s]; b {
-		act.Context().DisableSensor(s)
+		s.Disable(act)
 		enableSensors[s] = false
+	}
+}
+
+func SetEventRate(act *app.Activity, s *sensor.Sensor, t time.Duration) {
+	if b, _ := enableSensors[s]; b {
+		s.SetEventRate(act, t)
 	}
 }
 
@@ -64,8 +71,8 @@ var gRotation = ROTATION0
 var eventMap = map[sensor.TYPE]map[int]sensor.Event{}
 
 func sensorEevent(act *app.Activity, events []sensor.Event) {
-	//n := len(events) - 1
-	//log.Println("sensor:", events[n].GetType(), events[n].GetTimestamp())
+	n := len(events) - 1
+	log.Println("sensor:", events[n].GetType(), events[n].GetTimestamp())
 	var vec sensor.Vector
 	for _, event := range events {
 		if _, ok := eventMap[event.GetType()]; !ok {

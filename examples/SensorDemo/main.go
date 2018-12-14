@@ -78,6 +78,7 @@ var (
 
 	im          *util.Render
 	sensorInfos []sensorInfo
+	sensorRate  int = 10
 )
 
 func initEGL(act *app.Activity, win *app.Window) {
@@ -210,7 +211,7 @@ func destroyed(act *app.Activity, win *app.Window) {
 	releaseEGL()
 }
 
-func draw(act *app.Activity, win *app.Window) {
+func draw(act *app.Activity, _ *app.Window) {
 	if eglctx != nil {
 		io := imgui.GetIO()
 
@@ -255,13 +256,21 @@ func draw(act *app.Activity, win *app.Window) {
 			}
 		}
 
+		rateChange := false
 		if imgui.CollapsingHeader("sensor events", int(imgui.TreeNodeFlags_DefaultOpen)) {
+			if imgui.SliderInt("(ms) rate", &sensorRate, 0, 3000) {
+				rateChange = true
+				log.Println(" sensorRate =", sensorRate)
+			}
 			lastType := sensor.TYPE_INVALID
 			for i, info := range sensorInfos {
 				if info.Type != lastType {
 					if imgui.TreeNodeEx(info.Type.String(), int(imgui.TreeNodeFlags_DefaultOpen)) {
 						for j := i; j < len(sensorInfos) && info.Type == sensorInfos[j].Type; j++ {
-							EnableSensor(act, sensorInfos[j].sensor)
+							EnableSensor(act, sensorInfos[j].sensor, time.Duration(sensorRate)*time.Millisecond)
+							if rateChange {
+								SetEventRate(act, sensorInfos[j].sensor, time.Duration(sensorRate)*time.Millisecond)
+							}
 						}
 
 						is := []int{}
