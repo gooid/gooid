@@ -266,7 +266,7 @@ func (ctx *Context) loopEvents(timeoutMillis int) bool {
 			return true
 
 		case LOOPER_POLL_WAKE:
-			info("LooperPollAll is ALOOPER_POLL_WAKE")
+			//info("LooperPollAll is ALOOPER_POLL_WAKE")
 			return true
 		case LOOPER_POLL_TIMEOUT:
 			//Info("LooperPollAll is LOOPER_POLL_TIMEOUT")
@@ -339,6 +339,12 @@ func (s *Sensor) Disable(act *Activity) {
 	act.Context().sensorQueue.disableSensor(s)
 }
 
+// Sets the delivery rate of events in microseconds for the given sensor.
+//
+// This function has to be called after Enable.
+// Note that this is a hint only, generally event will arrive at a higher
+// rate. It is an error to set a rate inferior to the value returned by
+// GetMinDelay().
 func (s *Sensor) SetEventRate(act *Activity, t time.Duration) {
 	act.Context().sensorQueue.setEventRate(s, t)
 }
