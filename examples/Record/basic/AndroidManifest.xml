@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Copyright 2014 The Go Authors. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"	
+	package="gooid.mainnative.Record"
+	android:versionCode="1"
+	android:versionName="1.0">
+	
+	<uses-sdk android:minSdkVersion="18" android:targetSdkVersion="19" />
+	
+    <!-- Tell the system this app requires OpenGL ES 2.0. -->
+    <uses-feature android:glEsVersion="131072" android:required="true" />
+		
+	<application android:label="Record" android:hasCode="false"  android:debuggable="true">	
+	<activity android:name="android.app.NativeActivity"		
+		android:configChanges="orientation|keyboardHidden|screenSize"
+		android:clearTaskOnLaunch="true"
+		android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+		>
+		<meta-data android:name="android.app.lib_name" android:value="Record" 
+		/>
+				
+		<intent-filter>
+			  <action android:name="android.intent.action.MAIN" />
+			<category android:name="android.intent.category.LAUNCHER" />
+		</intent-filter>
+	</activity>
+	
+	</application>	
+	
+	<uses-permission android:name="android.permission.RECORD_AUDIO" />
+	<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /> 	
+</manifest> 
