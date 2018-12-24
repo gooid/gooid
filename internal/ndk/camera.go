@@ -29,7 +29,7 @@ static void applyCameraProperties(void* camera) {
 	applyCameraPropertiesC(camera);
 }
 
-static void initCamera(char* native_camera) {
+static int initCamera(char* native_camera) {
 	void *handler = dlopen(native_camera, RTLD_LAZY);
 	if (handler == NULL) return;
 	initCameraConnectC = dlsym(handler, "initCameraConnectC");
@@ -37,6 +37,14 @@ static void initCamera(char* native_camera) {
 	getCameraPropertyC = dlsym(handler, "getCameraPropertyC");
 	setCameraPropertyC = dlsym(handler, "setCameraPropertyC");
 	applyCameraPropertiesC = dlsym(handler, "applyCameraPropertiesC");
+	if (initCameraConnectC == NULL ||
+		closeCameraConnectC == NULL||
+		getCameraPropertyC == NULL ||
+		setCameraPropertyC == NULL ||
+		applyCameraPropertiesC == NULL) {
+			return 0;
+	}
+	return 1;
 }
 
 static char* getCameraPropertyString(void* camera, int propIdx) {
@@ -60,7 +68,20 @@ import (
 	"unsafe"
 )
 
-func init() {
+const (
+	iUNINIT = iota
+	iINITFAIL
+	iINITOK
+)
+
+var initStat = iUNINIT
+
+func initCamera() {
+	if initStat != iUNINIT {
+		return
+	}
+	initStat = iINITFAIL
+
 	ver := "r5"
 	api := 18
 	fmt.Sscanf(PropGet("ro.build.version.sdk"), "%d", &api)
@@ -74,6 +95,7 @@ func init() {
 		ver = "r4.3"
 	}
 
+	info("initCamera:", ver)
 	names := FindMatchLibrary("libnative_camera_" + ver + "*.so")
 	if len(names) == 0 {
 		return
@@ -82,21 +104,34 @@ func init() {
 	cname := C.CString(names[0])
 	defer C.free(unsafe.Pointer(cname))
 
-	C.initCamera(cname)
+	ret := C.initCamera(cname)
+	if ret != 0 {
+		initStat = iINITOK
+	}
 }
 
 type Camera uintptr
 type CameraCallback func([]byte) bool
 
 func CameraConnect(cameraId int, cb CameraCallback) Camera {
-	userData := (*unsafe.Pointer)((unsafe.Pointer)(&cb))
+	initCamera()
+	if initStat != iINITOK {
+		return Camera(0)
+	}
+
+	userData := uintptr(0)
+	if cb != nil {
+		userData = ^(*(*uintptr)(unsafe.Pointer(&cb)))
+	}
+
 	info("CameraConnect:", cameraId, cb, userData)
-	return Camera(C.initCameraConnect(unsafe.Pointer(C.cgoCameraCallback), C.int(cameraId), unsafe.Pointer(*userData)))
+	return Camera(C.initCameraConnect(unsafe.Pointer(C.cgoCameraCallback), C.int(cameraId), unsafe.Pointer(userData)))
 }
 
 //export cgoCameraCallback
 func cgoCameraCallback(buffer *C.char, bufferSize C.size_t, userData unsafe.Pointer) int {
 	if userData != nil {
+		userData = unsafe.Pointer(^(uintptr(userData)))
 		buf := (*[1 << 28]byte)(unsafe.Pointer(buffer))[:int(bufferSize)]
 		if (*(*CameraCallback)((unsafe.Pointer)(&userData)))(buf) {
 			return 1
@@ -336,7 +371,7 @@ func FindMatchLibrary(pattern string) []string {
 		paths = "/system/lib"
 	}
 	dirs := strings.Split(paths, ":")
-	dirs = append(dirs, GetLibraryPath())
+	dirs = append([]string{GetLibraryPath()}, dirs...)
 	for _, dir := range dirs {
 		fns, err := filepath.Glob(filepath.Join(dir, pattern))
 		if err != nil {

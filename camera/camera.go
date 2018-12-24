@@ -2,7 +2,6 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-
 package camera
 
 import (
@@ -10,6 +9,9 @@ import (
 )
 
 const (
+	FACING_FRONT = 1 // 前摄
+	FACING_BACK  = 0 // 后摄
+
 	FLASH_MODE_AUTO    = app.CAMERA_FLASH_MODE_AUTO
 	FLASH_MODE_OFF     = app.CAMERA_FLASH_MODE_OFF
 	FLASH_MODE_ON      = app.CAMERA_FLASH_MODE_ON
