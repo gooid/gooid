@@ -14,11 +14,16 @@ import (
 	"github.com/gooid/imgui"
 )
 
+const (
+	NONE = iota
+	READY
+	RESIZING
+)
+
 type cameraUI struct {
 	previewSizes [][2]int
 	comboText    string
 
-	resetProp    bool
 	previewIndex int
 	irender      render.Render
 	imgFormat    string
@@ -31,7 +36,7 @@ type cameraObj struct {
 
 	imageData []byte
 	isUpdate  bool
-	takeData  int32 // atomic.AddInt32
+	camStat   int32 // atomic.???Int32
 }
 
 func (cam *cameraObj) setYuv(buffer []byte) {
@@ -63,23 +68,23 @@ func cameraInit(id int, usercb func(w, h int, img []byte) bool) *cameraObj {
 
 	cb := func(buffer []byte) bool {
 		// init done
-		if cam.takeData > 0 {
-			cam.Lock()
-
-			wh := cam.previewSizes[cam.previewIndex]
-			if cam.resetProp && cam.irender.Validate(wh[0], wh[1], buffer) {
-				cam.ResetProperty()
-				cam.resetProp = false
-			}
-
-			if !usercb(wh[0], wh[1], buffer) {
-				cam.setYuv(buffer)
-			}
-			cam.Unlock()
-			runtime.Gosched()
-		} else {
-			atomic.AddInt32(&cam.takeData, 1)
+		if atomic.CompareAndSwapInt32(&cam.camStat, NONE, READY) {
+			return true
 		}
+
+		cam.Lock()
+
+		wh := cam.previewSizes[cam.previewIndex]
+		if cam.camStat == RESIZING && cam.irender.Validate(wh[0], wh[1], buffer) {
+			cam.ResetProperty()
+			atomic.CompareAndSwapInt32(&cam.camStat, RESIZING, READY)
+		}
+
+		if !usercb(wh[0], wh[1], buffer) {
+			cam.setYuv(buffer)
+		}
+		cam.Unlock()
+		runtime.Gosched()
 		return true
 	}
 
@@ -100,7 +105,7 @@ func cameraInit(id int, usercb func(w, h int, img []byte) bool) *cameraObj {
 	// 因 camera 还未初始化完，需就异步执行
 	go func() {
 		runtime.LockOSThread()
-		for cam.takeData == 0 {
+		for cam.camStat == NONE {
 			time.Sleep(time.Millisecond * 100)
 		}
 		cam.setPreviewSize(0)
@@ -112,10 +117,11 @@ func (cam *cameraObj) setPreviewSize(i int) {
 	w, h := cam.getPreviewSize(i)
 	if cam != nil {
 		cam.Lock()
-		cam.SetFrameSize(w, h)
-		cam.ApplyProperties()
-		cam.previewIndex = i
-		cam.resetProp = true
+		if atomic.CompareAndSwapInt32(&cam.camStat, READY, RESIZING) {
+			cam.SetFrameSize(w, h)
+			cam.ApplyProperties()
+			cam.previewIndex = i
+		}
 		cam.Unlock()
 	}
 }
