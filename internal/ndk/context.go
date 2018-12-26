@@ -58,8 +58,9 @@ type Context struct {
 	isReady     bool
 	isDebug     bool
 
-	className  string
-	savedState []byte
+	className   string
+	packageName string
+	savedState  []byte
 }
 
 func (ctx *Context) init() {
@@ -324,6 +325,10 @@ func (ctx *Context) Wake() {
 
 func (ctx *Context) Name() string {
 	return ctx.className
+}
+
+func (ctx *Context) Package() string {
+	return ctx.packageName
 }
 
 func (s *Sensor) Enable(act *Activity) {

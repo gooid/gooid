@@ -189,7 +189,8 @@ func callMain() {
 
 func createActivity(act *Activity, savedState unsafe.Pointer, savedStateSize C.size_t) {
 	lname := C.GoString(C._GetLocalClassName(act.env, act.clazz))
-	info("ANativeActivity_onCreate:", lname)
+	pname := C.GoString(C._GetPackageName(act.env, act.clazz))
+	info("ANativeActivity_onCreate:", pname+"/"+lname)
 
 	callMain()
 
@@ -205,6 +206,7 @@ func createActivity(act *Activity, savedState unsafe.Pointer, savedStateSize C.s
 	ctx.init()
 
 	ctx.className = lname
+	ctx.packageName = pname
 	addActivity(act, ctx.className)
 	appContext.funcChan <- func() {
 		go func() {
