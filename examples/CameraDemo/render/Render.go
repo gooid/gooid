@@ -36,6 +36,9 @@ type Render interface {
 
 	// 验证 pixels 是否符合指定 width、height
 	Validate(width, height int, pixels interface{}) bool
+
+	// 转换图片坐标到 windows/client 坐标
+	Pos(x, y int) (int, int)
 }
 
 type BaseRender struct {
@@ -67,6 +70,26 @@ func (r *BaseRender) SetProperty(wW, wH int, iW, iH int, x, y, rw, rh int, op in
 	}
 	r.s = s
 	r.x, r.y, r.w, r.h = float32(x), float32(y), float32(iw)*s, float32(ih)*s
+}
+
+func (r *BaseRender) Pos(x, y int) (int, int) {
+	fx, fy := float32(x)*r.s, float32(y)*r.s
+	switch r.op & ROTATIONMASK {
+	case ROTATION0:
+	case ROTATION90:
+		fx, fy = r.w-fy, fx
+	case ROTATION180:
+		fx, fy = r.w-fx, r.h-fy
+	case ROTATION270:
+		fx, fy = fy, r.h-fx
+	}
+	if r.op&FLIPHOR == FLIPHOR {
+		fx = r.w - fx
+	}
+	if r.op&FLIPVER == FLIPVER {
+		fy = r.h - fy
+	}
+	return int(r.x + fx), int(r.y + fy)
 }
 
 func (r *BaseRender) Vertices() []float32 {
