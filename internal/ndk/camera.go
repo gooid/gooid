@@ -31,7 +31,7 @@ static void applyCameraProperties(void* camera) {
 
 static int initCamera(char* native_camera) {
 	void *handler = dlopen(native_camera, RTLD_LAZY);
-	if (handler == NULL) return;
+	if (handler == NULL) return 0;
 	initCameraConnectC = dlsym(handler, "initCameraConnectC");
 	closeCameraConnectC = dlsym(handler, "closeCameraConnectC");
 	getCameraPropertyC = dlsym(handler, "getCameraPropertyC");
