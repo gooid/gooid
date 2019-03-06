@@ -84,6 +84,7 @@ static void* _SetActivityCallbacks(ANativeActivity* activity) {
 	activity->callbacks->onContentRectChanged = (void*)onContentRectChanged;
 	activity->callbacks->onConfigurationChanged = onConfigurationChanged;
 	activity->callbacks->onLowMemory = onLowMemory;
+	return (void*)activity;
 }
 
 */
